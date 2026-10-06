@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GameVault — База видеоигр</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        display: ['Orbitron', 'sans-serif'],
+      },
+      colors: {
+        dark: {
+          950: '#09090b',
+          900: '#18181b',
+          800: '#27272a',
+        }
+      }
+    }
+  }
+}
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: #09090b;
+    color: #f4f4f5;
+    overflow-x: hidden;
+  }
+  .font-display { font-family: 'Orbitron', sans-serif; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #09090b; }
+  ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .animate-fade { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+  .game-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    transition: all 0.25s ease;
+    cursor: pointer;
+    background: #18181b;
+    border: 1px solid #27272a;
+  }
+  .game-card:hover {
+    transform: translateY(-4px);
+    border-color: #52525b;
+    box-shadow: 0 15px 30px -10px rgba(0,0,0,0.5), 0 0 15px rgba(139, 92, 246, 0.15);
+  }
+  .game-card .cover {
+    aspect-ratio: 3/4;
+    background-size: cover;
+    background-position: center;
+    transition: transform 0.4s ease;
+  }
+  .game-card:hover .cover { transform: scale(1.04); }
+  .game-card .overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 35%, rgba(9,9,11,0.95) 100%);
+  }
+
+  .nav-link {
+    position: relative;
+    padding: 8px 16px;
+    color: #a1a1aa;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+    cursor: pointer;
+  }
+  .nav-link:hover, .nav-link.active { color: #fff; }
+  .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 2px;
+    background: #8b5cf6;
+    border-radius: 2px;
+  }
+
+  .glass-panel {
+    background: rgba(24, 24, 27, 0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .rating-badge {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    backdrop-filter: blur(4px);
+  }
+
+  .hidden-view { display: none !important; }
+
+  @media (max-width: 768px) {
+    .nav-desktop { display: none !important; }
+    .nav-link.active::after { display: none; }
+  }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+</style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+<!-- HEADER -->
+<header class="sticky top-0 z-50 glass-panel border-b border-white/5">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+      <div class="flex items-center gap-3 cursor-pointer" onclick="showView('home')">
+        <div class="w-9 h-9 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/20">
+          <i class="fa-solid fa-gamepad text-white text-sm"></i>
+        </div>
+        <span class="font-display font-black text-xl tracking-wider text-white">GAME<span class="text-violet-500">VAULT</span></span>
+      </div>
+
+      <nav class="nav-desktop hidden md:flex items-center gap-1">
+        <div class="nav-link active" data-view="home" onclick="showView('home')">Главная</div>
+        <div class="nav-link" data-view="catalog" onclick="showView('catalog')">Каталог</div>
+        <div class="nav-link" data-view="genres" onclick="showView('genres')">Жанры</div>
+        <div class="nav-link" data-view="platforms" onclick="showView('platforms')">Платформы</div>
+        <div class="nav-link" data-view="tops" onclick="showView('tops')">Топы</div>
+      </nav>
+
+      <div class="flex items-center gap-4">
+        <div class="hidden md:block relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 text-sm"></i>
+          <input type="text" class="bg-zinc-900/50 border border-zinc-800 text-zinc-200 text-sm rounded-full py-2 pl-10 pr-4 w-64 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition placeholder-zinc-600" placeholder="Поиск среди 5 000 игр..." id="global-search" oninput="handleSearch(this.value)">
+        </div>
+
+        <div id="auth-buttons">
+          <button onclick="showAuthModal()" class="bg-violet-600 hover:bg-violet-500 text-white font-semibold py-2 px-4 rounded-lg transition flex items-center gap-2">
+            <i class="fa-solid fa-user"></i> Войти
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main id="main-content" class="flex-1">
+  <div class="h-[70vh] flex flex-col items-center justify-center text-center p-6">
+    <i class="fa-solid fa-circle-notch fa-spin text-4xl text-violet-500 mb-4"></i>
+    <h2 class="text-xl font-bold text-white mb-2">Инициализация базы игр...</h2>
+    <p class="text-zinc-500 text-sm">Чтение games.json</p>
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="border-t border-zinc-800/50 bg-zinc-950 mt-auto">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-zinc-500">
+    <div class="flex items-center gap-2">
+      <div class="w-6 h-6 bg-zinc-800 rounded-lg flex items-center justify-center">
+        <i class="fa-solid fa-gamepad text-zinc-400 text-xs"></i>
+      </div>
+      <span>© 2026 GameVault. База данных RAWG.</span>
+    </div>
+    <div class="flex gap-6">
+      <span class="hover:text-zinc-300 cursor-pointer">Политика конфиденциальности</span>
+      <span class="hover:text-zinc-300 cursor-pointer">Условия сервиса</span>
+    </div>
+  </div>
+</footer>
+
+<!-- MODAL AUTH -->
+<div id="auth-modal" class="modal-overlay hidden-view">
+  <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 max-w-md w-full relative">
+    <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-zinc-500 hover:text-white">
+      <i class="fa-solid fa-xmark text-xl"></i>
+    </button>
+    <h2 class="text-2xl font-bold text-white mb-6">Вход в аккаунт</h2>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm text-zinc-400 mb-1">Email</label>
+        <input type="email" id="auth-email" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-violet-500" placeholder="user@domain.com">
+      </div>
+      <div>
+        <label class="block text-sm text-zinc-400 mb-1">Пароль</label>
+        <input type="password" id="auth-password" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-violet-500" placeholder="••••••••">
+      </div>
+      <button onclick="login()" class="w-full bg-violet-600 hover:bg-violet-500 text-white font-semibold py-2.5 rounded-lg transition">Войти</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let GAMES = [];
+let catalogLimit = 30;
+
+const GENRES = [
+  { id: 'Action', name: 'Экшен', icon: 'fa-gun', description: 'Динамичные бои и адреналин', color: 'from-red-600 to-orange-600' },
+  { id: 'RPG', name: 'RPG', icon: 'fa-dragon', description: 'Ролевые игры и прокачка', color: 'from-purple-600 to-pink-600' },
+  { id: 'Adventure', name: 'Приключения', icon: 'fa-compass', description: 'Исследования и квесты', color: 'from-emerald-600 to-teal-600' },
+  { id: 'Shooter', name: 'Шутер', icon: 'fa-crosshairs', description: 'Стрельба и тактика', color: 'from-blue-600 to-cyan-600' },
+  { id: 'Strategy', name: 'Стратегия', icon: 'fa-chess', description: 'Стратегическое планирование', color: 'from-amber-600 to-yellow-600' },
+  { id: 'Puzzle', name: 'Головоломка', icon: 'fa-puzzle-piece', description: 'Загадки и логика', color: 'from-pink-600 to-rose-600' },
+  { id: 'Racing', name: 'Гонки', icon: 'fa-car', description: 'Скорость и автосимуляторы', color: 'from-orange-600 to-red-600' },
+  { id: 'Sports', name: 'Спорт', icon: 'fa-futbol', description: 'Спортивные дисциплины', color: 'from-green-600 to-emerald-600' }
+];
+
+const PLATFORMS = [
+  { id: 'PC', name: 'PC', icon: 'fa-desktop', description: 'Игры для персональных компьютеров', color: 'from-blue-600 to-indigo-600' },
+  { id: 'PlayStation', name: 'PlayStation', icon: 'fa-playstation', description: 'Консоли Sony PlayStation', color: 'from-indigo-600 to-purple-600' },
+  { id: 'Xbox', name: 'Xbox', icon: 'fa-xbox', description: 'Экосистема Microsoft Xbox', color: 'from-green-600 to-emerald-600' },
+  { id: 'Nintendo', name: 'Nintendo', icon: 'fa-gamepad', description: 'Платформы семейства Nintendo', color: 'from-red-600 to-pink-600' }
+];
+
+let state = {
+  currentUser: null,
+  currentView: 'home',
+  currentGame: null,
+  searchQuery: '',
+  filters: { genre: null, platform: null },
+  sortBy: 'rating'
+};
+
+async function initApp() {
+  try {
+    const response = await fetch('./games.json');
+    if (!response.ok) throw new Error('Файл games.json не найден');
+    GAMES = await response.json();
+    showView('home');
+  } catch (error) {
+    document.getElementById('main-content').innerHTML = `
+      <div class="h-[70vh] flex flex-col items-center justify-center text-center p-6">
+        <i class="fa-solid fa-circle-exclamation text-5xl text-amber-500 mb-4"></i>
+        <h2 class="text-2xl font-bold text-white mb-2">Файл games.json не найден</h2>
+        <p class="text-zinc-400 max-w-lg mb-4 text-sm leading-relaxed">
+          Запустите скрипт <code class="text-violet-400 bg-zinc-800 px-2 py-0.5 rounded">python export_rawg.py</code>, чтобы сформировать базу данных, и откройте проект через локальный сервер (например, Live Server в VS Code).
+        </p>
+      </div>
+    `;
+  }
+}
+
+function showView(view, params = {}) {
+  state.currentView = view;
+  if (params.gameId) state.currentGame = GAMES.find(g => g.id === params.gameId);
+  if (params.genre !== undefined) state.filters.genre = params.genre;
+  if (params.platform !== undefined) state.filters.platform = params.platform;
+
+  catalogLimit = 30;
+
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  const activeLink = document.querySelector(`.nav-link[data-view="${view}"]`);
+  if (activeLink) activeLink.classList.add('active');
+
+  const main = document.getElementById('main-content');
+  main.innerHTML = '';
+  main.className = 'animate-fade';
+
+  switch(view) {
+    case 'home': renderHome(main); break;
+    case 'catalog': renderCatalog(main); break;
+    case 'game': renderGamePage(main); break;
+    case 'genres': renderGenres(main); break;
+    case 'platforms': renderPlatforms(main); break;
+    case 'tops': renderTops(main); break;
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderHome(container) {
+  if (!GAMES.length) return;
+  const featured = GAMES[0];
+  const popular = [...GAMES].sort((a, b) => b.rating - a.rating).slice(0, 12);
+
+  container.innerHTML = `
+    <section class="relative h-[480px] md:h-[550px] overflow-hidden">
+      <div class="absolute inset-0" style="background: url('${featured.cover}') center/cover;"></div>
+      <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-transparent"></div>
+      <div class="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/50 to-transparent"></div>
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-end pb-14">
+        <div class="max-w-2xl">
+          <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-violet-600/30 text-violet-300 border border-violet-500/40 mb-3 inline-block">Топ рейтинг</span>
+          <h1 class="font-display font-black text-3xl md:text-5xl mb-3 text-white">${featured.title}</h1>
+          <div class="flex items-center gap-3 mb-4 text-sm text-zinc-300">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-star text-amber-400"></i> <b class="text-white text-base">${featured.rating}</b></span>
+            <span>•</span><span>${featured.year}</span>
+            <span>•</span><span>${(featured.genres || []).slice(0, 2).join(', ')}</span>
+          </div>
+          <p class="text-zinc-300 text-sm md:text-base mb-6 line-clamp-2">${featured.fullDescription || featured.description}</p>
+          <button class="bg-violet-600 hover:bg-violet-500 text-white font-semibold py-2.5 px-6 rounded-xl transition" onclick="showView('game', {gameId: ${featured.id}})">
+            Подробнее
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="font-display font-bold text-2xl text-white">🔥 Популярные игры</h2>
+          <p class="text-zinc-500 text-sm mt-1">Всего в базе: <b>${GAMES.length.toLocaleString()}</b> игр</p>
+        </div>
+        <button class="text-violet-400 hover:text-violet-300 text-sm font-semibold flex items-center gap-1" onclick="showView('catalog')">
+          Весь каталог <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        ${popular.map(g => gameCard(g)).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function gameCard(game) {
+  return `
+    <div class="game-card group" onclick="showView('game', {gameId: ${game.id}})">
+      <div class="cover" style="background-image: url('${game.cover || ''}')"></div>
+      <div class="overlay"></div>
+      ${game.rating > 0 ? `
+        <div class="absolute top-2 right-2 rating-badge px-2 py-0.5 rounded-lg flex items-center gap-1 z-10">
+          <i class="fa-solid fa-star text-emerald-400 text-[10px]"></i>
+          <span class="text-emerald-400 font-bold text-xs">${game.rating}</span>
+        </div>
+      ` : ''}
+      <div class="absolute bottom-0 left-0 right-0 p-3 z-10">
+        <div class="font-bold text-white text-sm mb-1 truncate group-hover:text-violet-400 transition-colors">${game.title}</div>
+        <div class="flex items-center justify-between text-xs text-zinc-400">
+          <span>${game.year || '—'}</span>
+          <span class="truncate max-w-[80px] text-right text-zinc-500">${(game.genres && game.genres[0]) || ''}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCatalog(container) {
+  let filtered = GAMES.filter(g => {
+    if (state.searchQuery && !g.title.toLowerCase().includes(state.searchQuery.toLowerCase())) return false;
+    if (state.filters.genre) {
+      if (!g.genres || !g.genres.some(gen => gen.toLowerCase().includes(state.filters.genre.toLowerCase()))) return false;
+    }
+    if (state.filters.platform) {
+      if (!g.platforms || !g.platforms.some(plt => plt.toLowerCase().includes(state.filters.platform.toLowerCase()))) return false;
+    }
+    return true;
+  });
+
+  if (state.sortBy === 'rating') filtered.sort((a, b) => b.rating - a.rating);
+  else if (state.sortBy === 'year') filtered.sort((a, b) => b.year - a.year);
+
+  const displayedGames = filtered.slice(0, catalogLimit);
+
+  container.innerHTML = `
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="font-display font-bold text-3xl text-white">Каталог игр</h1>
+          <p class="text-zinc-500 text-sm mt-1">Отображается: <b>${displayedGames.length}</b> из <b>${filtered.length.toLocaleString()}</b></p>
+        </div>
+      </div>
+
+      <div class="glass-panel rounded-2xl p-4 mb-8 flex items-center justify-between flex-wrap gap-4">
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-bold text-zinc-500 uppercase">Сортировка:</span>
+          <button class="${state.sortBy === 'rating' ? 'text-violet-400 font-semibold' : 'text-zinc-400'} text-sm" onclick="setSort('rating')">По рейтингу</button>
+          <button class="${state.sortBy === 'year' ? 'text-violet-400 font-semibold' : 'text-zinc-400'} text-sm" onclick="setSort('year')">По дате</button>
+        </div>
+        ${(state.filters.genre || state.filters.platform || state.searchQuery) ? `
+          <button class="text-xs bg-zinc-800 text-zinc-400 hover:text-white px-3 py-1 rounded-lg border border-zinc-700" onclick="clearFilters()">
+            Сбросить фильтры
+          </button>
+        ` : ''}
+      </div>
+
+      ${displayedGames.length > 0 ? `
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          ${displayedGames.map(g => gameCard(g)).join('')}
+        </div>
+      ` : `
+        <div class="text-center py-20 text-zinc-600">
+          <i class="fa-solid fa-magnifying-glass text-4xl mb-4"></i>
+          <p>Ничего не найдено</p>
+        </div>
+      `}
+
+      ${catalogLimit < filtered.length ? `
+        <div class="text-center mt-10">
+          <button onclick="loadMoreGames()" class="bg-violet-600 hover:bg-violet-500 text-white font-semibold py-3 px-8 rounded-xl transition">
+            Показать ещё (${filtered.length - catalogLimit} осталось)
+          </button>
+        </div>
+      ` : ''}
+    </section>
+  `;
+}
+
+function loadMoreGames() {
+  catalogLimit += 30;
+  renderCatalog(document.getElementById('main-content'));
+}
+
+function renderGamePage(container) {
+  const game = state.currentGame;
+  if (!game) return;
+
+  container.innerHTML = `
+    <section class="relative min-h-[400px] overflow-hidden">
+      <div class="absolute inset-0" style="background: url('${game.cover}') center/cover;"></div>
+      <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-zinc-950/40"></div>
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+        <button onclick="showView('catalog')" class="text-zinc-400 hover:text-white text-sm mb-6 flex items-center gap-2">
+          <i class="fa-solid fa-arrow-left"></i> Назад в каталог
+        </button>
+        <div class="grid md:grid-cols-[260px_1fr] gap-8 items-start">
+          <div class="rounded-2xl overflow-hidden aspect-[3/4] bg-cover bg-center border border-white/10 shadow-2xl" style="background-image: url('${game.cover}')"></div>
+          <div>
+            <h1 class="font-display font-black text-3xl md:text-5xl text-white mb-3">${game.title}</h1>
+            <div class="flex flex-wrap items-center gap-4 text-sm mb-6 text-zinc-400">
+              <span>Год: <b class="text-white">${game.year || '—'}</b></span>
+              <span>•</span>
+              <span>Оценок в RAWG: <b class="text-white">${(game.ratingCount || 0).toLocaleString()}</b></span>
+              <span>•</span>
+              <span class="text-emerald-400 font-bold flex items-center gap-1"><i class="fa-solid fa-star"></i> ${game.rating} / 10</span>
+            </div>
+            
+            <p class="text-zinc-300 leading-relaxed mb-6">${game.fullDescription || game.description || 'Описание отсутствует.'}</p>
+            
+            <div class="mb-5">
+              <span class="text-xs uppercase text-zinc-500 font-bold block mb-2">Жанры</span>
+              <div class="flex flex-wrap gap-2">
+                ${(game.genre
