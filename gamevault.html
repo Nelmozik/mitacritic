@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GameVault — База видеоигр</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        display: ['Orbitron', 'sans-serif'],
+      },
+      colors: {
+        dark: {
+          950: '#09090b',
+          900: '#18181b',
+          800: '#27272a',
+        }
+      }
+    }
+  }
+}
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: #09090b;
+    color: #f4f4f5;
+    overflow-x: hidden;
+  }
+  .font-display { font-family: 'Orbitron', sans-serif; }
+  
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #09090b; }
+  ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .animate-fade { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+  .game-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    background: #18181b;
+    border: 1px solid #27272a;
+  }
+  .game-card:hover {
+    transform: translateY(-4px);
+    border-color: #52525b;
+    box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5), 0 0 20px rgba(139, 92, 246, 0.1);
+  }
+  .game-card .cover {
+    aspect-ratio: 3/4;
+    background-size: cover;
+    background-position: center;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .game-card:hover .cover { transform: scale(1.05); }
+  .game-card .overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 30%, rgba(9,9,11,0.95) 100%);
+  }
+
+  .nav-link {
+    position: relative;
+    padding: 8px 16px;
+    color: #a1a1aa;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+    cursor: pointer;
+  }
+  .nav-link:hover, .nav-link.active { color: #fff; }
+  .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 2px;
+    background: #8b5cf6;
+    border-radius: 2px;
+  }
+
+  .glass-panel {
+    background: rgba(24, 24, 27, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .rating-badge {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    backdrop-filter: blur(4px);
+  }
+
+  .hidden-view { display: none !important; }
+
+  @media (max-width: 768px) {
+    .nav-desktop { display: none !important; }
+    .nav-link.active::after { display: none; }
+    .nav-link.active { color: #8b5cf6; }
+  }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .review-tag {
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .review-tag:hover {
+    transform: translateY(-2px);
+  }
+  .review-tag.selected {
+    background: #8b5cf6;
+    border-color: #8b5cf6;
+  }
+</style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+<!-- ============ HEADER ============ -->
+<header class="sticky top-0 z-50 glass-panel border-b border-white/5">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+      <!-- Логотип -->
+      <div class="flex items-center gap-3 cursor-pointer" onclick="showView('home')">
+        <div class="w-9 h-9 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/20">
+          <i class="fa-solid fa-gamepad text-white text-sm"></i>
+        </div>
+        <span class="font-display font-black text-xl tracking-wider text-white">GAME<span class="text-violet-500">VAULT</span></span>
+      </div>
+
+      <!-- Навигация (Десктоп) -->
+      <nav class="nav-desktop hidden md:flex items-center gap-1">
+        <div class="nav-link active" data-view="home" onclick="showView('home')">Главная</div>
+        <div class="nav-link" data-view="catalog" onclick="showView('catalog')">Каталог</div>
+        <div class="nav-link" data-view="genres" onclick="showView('genres')">Жанры</div>
+        <div class="nav-link" data-view="platforms" onclick="showView('platforms')">Платформы</div>
+        <div class="nav-link" data-view="tops" onclick="showView('tops')">Топы</div>
+        <div class="nav-link" data-view="releases" onclick="showView('releases')">Релизы</div>
+      </nav>
+
+      <!-- Поиск и Аккаунт -->
+      <div class="flex items-center gap-4">
+        <div class="hidden md:block relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 text-sm"></i>
+          <input type="text" class="bg-zinc-900/50 border border-zinc-800 text-zinc-200 text-sm rounded-full py-2 pl-10 pr-4 w-64 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition placeholder-zinc-600" placeholder="Поиск игр..." id="global-search" oninput="handleSearch(this.value)">
+        </div>
+
+        <!-- АККАУНТ ПОЛЬЗОВАТЕЛЯ -->
+        <div id="auth-buttons">
+          <button onclick="showAuthModal()" class="bg-violet-600 hover:bg-violet-500 text-white font-semibold py-2 px-4 rounded-lg transition flex items-center gap-2">
+            <i class="fa-solid fa-user"></i> Войти
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ MAIN CONTENT ============ -->
+<main id="main-content" class="flex-1"></main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="border-t border-zinc-800/50 bg-zinc-950 mt-auto">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-zinc-500">
+      <div class="flex items-center gap-2">
+        <div class="w-6 h-6 bg-zinc-800 rounded-lg flex items-center justify-center">
+          <i class="fa-solid fa-gamepad text-zinc-400 text-xs"></i>
+        </div>
+        <span>© 2026 GameVault. Все права защищены.</span>
+      </div>
+      <div class="flex gap-6">
+        <span class="hover:text-zinc-300 cursor-pointer transition">Политика конфиденциальности</span>
+        <span class="hover:text-zinc-300 cursor-pointer transition">Условия использования</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- МОДАЛЬНОЕ ОКНО АВТОРИЗАЦИИ -->
+<div id="auth-modal" class="modal-overlay hidden-view">
+  <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 max-w-md w-full relative">
+    <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-zinc-500 hover:text-white">
+      <i class="fa-solid fa-xmark text-xl"></i>
+    </button>
+    
+    <h2 class="text-2xl font-bold text-white mb-6">Вход в аккаунт</h2>
+    
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-zinc-400 mb-2">Email</label>
+        <input type="email" id="auth-email" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500" placeholder="your@email.com">
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-zinc-400 mb-2">Пароль</label>
+        <input type="password" id="auth-password" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500" placeholder="••••••••">
+      </div>
+      
+      <button onclick="login()" class="w-full bg-violet-600 hover:bg-violet-500 text-white font-semibold py-3 rounded-lg transition">
+        Войти
+      </button>
+      
+      <div class="text-center text-sm text-zinc-500">
+        Или <button onclick="toggleAuthMode()" class="text-violet-400 hover:text-violet-300">зарегистрироваться</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО РЕГИСТРАЦИИ -->
+<div id="register-modal" class="modal-overlay hidden-view">
+  <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 max-w-md w-full relative">
+    <button onclick="closeRegisterModal()" class="absolute top-4 right-4 text-zinc-500 hover:text-white">
+      <i class="fa-solid fa-xmark text-xl"></i>
+    </button>
+    
+    <h2 class="text-2xl font-bold text-white mb-6">Регистрация</h2>
+    
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-zinc-400 mb-2">Имя пользователя</label>
+        <input type="text" id="reg-username" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500" placeholder="Username">
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-zinc-400 mb-2">Email</label>
+        <input type="email" id="reg-email" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500" placeholder="your@email.com">
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-zinc-400 mb-2">Пароль</label>
+        <input type="password" id="reg-password" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500" placeholder="••••••••">
+      </div>
+      
+      <button onclick="register()" class="w-full bg-violet-600 hover:bg-violet-500 text-white font-semibold py-3 rounded-lg transition">
+        Зарегистрироваться
+      </button>
+      
+      <div class="text-center text-sm text-zinc-500">
+        Уже есть аккаунт? <button onclick="toggleAuthMode()" class="text-violet-400 hover:text-violet-300">Войти</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО ОТЗЫВА -->
+<div id="review-modal" class="modal-overlay hidden-view">
+  <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 max-w-2xl w-full relative max-h-[90vh] overflow-y-auto">
+    <button onclick="closeReviewModal()" class="absolute top-4 right-4 text-zinc-500 hover:text-white">
+      <i class="fa-solid fa-xmark text-xl"></i>
+    </button>
+    
+    <h2 class="text-2xl font-bold text-white mb-2">Обзор игры</h2>
+    <h3 id="review-game-title" class="text-3xl font-bold text-white mb-6">Название игры</h3>
+    
+    <div class="flex gap-3 mb-6">
+      <button onclick="selectReviewRating('exceptional')" class="review-rating-btn px-4 py-2 rounded-full border border-zinc-700 hover:border-violet-500 transition flex items-center gap-2">
+        <i class="fa-solid fa-bullseye text-violet-400"></i> Исключительно
+      </button>
+      <button onclick="selectReviewRating('recommended')" class="review-rating-btn px-4 py-2 rounded-full border border-zinc-700 hover:border-violet-500 transition flex items-center gap-2">
+        <i class="fa-solid fa-thumbs-up text-emerald-400"></i> Рекомендуем
+      </button>
+      <button onclick="selectReviewRating('meh')" class="review-rating-btn px-4 py-2 rounded-full border border-zinc-700 hover:border-violet-500 transition flex items-center gap-2">
+        <i class="fa-solid fa-meh text-amber-400"></i> Да так
+      </button>
+      <button onclick="selectReviewRating('skip')" class="review-rating-btn px-4 py-2 rounded-full border border-zinc-700 hover:border-violet-500 transition flex items-center gap-2">
+        <i class="fa-solid fa-ban text-red-400"></i> Пропустить
+      </button>
+    </div>
+    
+    <div class="mb-6">
+      <label class="block text-sm font-medium text-zinc-400 mb-2">Текст обзора</label>
+      <textarea id="review-text" rows="4" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500" placeholder="Напишите ваш отзыв..."></textarea>
+    </div>
+    
+    <div class="mb-6">
+      <label class="block text-sm font-medium text-zinc-400 mb-3">Опишите игру несколькими словами:</label>
+      <div class="flex flex-wrap gap-2" id="review-tags">
+        <button onclick="toggleReviewTag(this)" class="review-tag px-4 py-2 rounded-full bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:border-violet-500 transition">«ЭТО ПОТРЯСЛО МЕНЯ»</button>
+        <button onclick="toggleReviewTag(this)" class="review-tag px-4 py-2 rounded-full bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:border-violet-500 transition">«ОСТАЛСЯ ЕЩЁ ОДИН ХОД»</button>
+        <button onclick="toggleReviewTag(this)" class="review-tag px-4 py-2 rounded-full bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:border-violet-500 transition">«НЕ МОГУ ПЕРЕСТАТЬ ИГРАТЬ»</button>
+        <button onclick="toggleReviewTag(this)" class="review-tag px-4 py-2 rounded-full bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:border-violet-500 transition">«ПРОВЕРЕННЫЙ ВРЕМЕНЕМ»</button>
+        <button onclick="toggleReviewTag(this)" class="review-tag px-4 py-2 rounded-full bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:border-violet-500 transition">«НРАВИЛИСЬ ДО ТОГО, КАК ОН СТАЛ ХИТОМ»</button>
+        <button onclick="toggleReviewTag(this)" class="review-tag px-4 py-2 rounded-full bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:border-violet-500 transition">«ПОСТОЯННО УМИРАЯ И НАСЛАЖДАЯСЬ ЭТИМ»</button>
+        <button onclick="toggleReviewTag(this)" class="review-tag px-4 py-2 rounded-full bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:border-violet-500 transition">«РАССЛАБЬТЕСЬ И РАССЛАБЬТЕСЬ»</button>
+        <button onclick="toggleReviewTag(this)" class="review-tag px-4 py-2 rounded-full bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:border-violet-500 transition">«ЛУЧШЕ С ДРУЗЬЯМИ»</button>
+        <button onclick="toggleReviewTag(this)" class="review-tag px-4 py-2 rounded-full bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:border-violet-500 transition">«НЕДООЦЕНЁННЫЕ»</button>
+        <button onclick="toggleReviewTag(this)" class="review-tag px-4 py-2 rounded-full bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:border-violet-500 transition">«ВОТ ЭТА КОНЦОВКА!»</button>
+        <button onclick="toggleReviewTag(this)" class="review-tag px-4 py-2 rounded-full bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:border-violet-500 transition">«ПОБЕЖДЁННЫЙ НЕ ОДИН РАЗ»</button>
+        <button onclick="toggleReviewTag(this)" class="review-tag px-4 py-2 rounded-full bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:border-violet-500 transition">«САУНДТРЕК НА ПОВТОРЕ»</button>
+      </div>
+    </div>
+    
+    <div class="flex justify-end gap-3">
+      <button onclick="closeReviewModal()" class="px-6 py-2 rounded-lg text-zinc-400 hover:text-white transition">Отмена</button>
+      <button onclick="submitReview()" class="px-6 py-2 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-lg transition">Опубликовать</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ ДАННЫЕ ============
+const GAMES = [
+  { id: 1, title: 'Cyberpunk 2077', year: 2020, developer: 'CD Projekt RED', cover: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600&q=80', screenshots: ['https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1200&q=80'], description: 'Приключенческая ролевая игра в мегаполисе Найт-Сити.', fullDescription: 'Вы играете за V — наёмника в поисках уникального импланта.', genres: ['RPG', 'Экшен'], tags: ['Киберпанк', 'Сюжет', 'Sci-Fi'], platforms: ['PC', 'PS5', 'Xbox Series X'], rating: 8.7, ratingCount: 128453, releaseDate: '10 декабря 2020', status: 'released', badges: ['hit'] },
+  { id: 2, title: 'Elden Ring', year: 2022, developer: 'FromSoftware', cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=600&q=80', screenshots: ['https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?w=1200&q=80'], description: 'Масштабная action-RPG в открытом мире.', fullDescription: 'Станьте Погасшим и отправьтесь в путешествие по Междуземью.', genres: ['RPG', 'Экшен'], tags: ['Фэнтези', 'Хардкор', 'Souls-like'], platforms: ['PC', 'PS5', 'Xbox Series X'], rating: 9.4, ratingCount: 245789, releaseDate: '25 февраля 2022', status: 'released', badges: ['hit', 'classic'] },
+  { id: 3, title: 'Baldur\'s Gate 3', year: 2023, developer: 'Larian Studios', cover: 'https://images.unsplash.com/photo-1534423861386-85a16f5d13fd?w=600&q=80', screenshots: ['https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?w=1200&q=80'], description: 'Эпическая RPG по правилам D&D.', fullDescription: 'Соберите отряд и вернитесь в Забытые Королевства.', genres: ['RPG', 'Пошаговая'], tags: ['D&D', 'Сюжет', 'Кооп'], platforms: ['PC', 'PS5', 'Xbox Series X'], rating: 9.6, ratingCount: 189234, releaseDate: '3 августа 2023', status: 'released', badges: ['hit', 'new'] },
+  { id: 4, title: 'God of War Ragnarök', year: 2022, developer: 'Santa Monica Studio', cover: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&q=80', screenshots: ['https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1200&q=80'], description: 'Кратос и Атрей в скандинавской мифологии.', fullDescription: 'Фимбулвинтер приближается.', genres: ['Экшен', 'Приключения'], tags: ['Мифология', 'Сюжет', 'Боссы'], platforms: ['PS5', 'PS4', 'PC'], rating: 9.2, ratingCount: 167890, releaseDate: '9 ноября 2022', status: 'released', badges: ['hit'] },
+  { id: 5, title: 'The Witcher 3', year: 2015, developer: 'CD Projekt RED', cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=600&q=80', screenshots: ['https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?w=1200&q=80'], description: 'Эпическая RPG о ведьмаке Геральте.', fullDescription: 'Вы — Геральт из Ривии, наёмный убийца монстров.', genres: ['RPG', 'Открытый мир'], tags: ['Фэнтези', 'Сюжет', 'Ведьмак'], platforms: ['PC', 'PS5', 'Xbox Series X', 'Switch'], rating: 9.5, ratingCount: 312456, releaseDate: '19 мая 2015', status: 'released', badges: ['classic', 'hit'] },
+  { id: 6, title: 'Hades', year: 2020, developer: 'Supergiant Games', cover: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&q=80', screenshots: ['https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1200&q=80'], description: 'Roguelike-экшен о сыне Аида.', fullDescription: 'Бросьте вызов богу мёртвых.', genres: ['Roguelike', 'Экшен'], tags: ['Мифология', 'Инди', 'Динамика'], platforms: ['PC', 'PS5', 'Xbox', 'Switch'], rating: 9.1, ratingCount: 145678, releaseDate: '17 сентября 2020', status: 'released', badges: ['hit'] },
+  { id: 7, title: 'GTA VI', year: 2025, developer: 'Rockstar Games', cover: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=600&q=80', screenshots: ['https://images.unsplash.com/photo-1514565131-fce0801e5785?w=1200&q=80'], description: 'Возвращение в Вайс-Сити.', fullDescription: 'Grand Theft Auto VI отправляется в штат Леонида.', genres: ['Экшен', 'Открытый мир'], tags: ['Криминал', 'Вайс-Сити', 'Сюжет'], platforms: ['PS5', 'Xbox Series X'], rating: 0, ratingCount: 0, releaseDate: '2025 (ожидается)', status: 'upcoming', badges: ['soon'] },
+  { id: 8, title: 'Starfield', year: 2023, developer: 'Bethesda', cover: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=600&q=80', screenshots: ['https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1200&q=80'], description: 'Первая новая вселенная от Bethesda.', fullDescription: 'В 2330 году человечество вышло за пределы Солнечной системы.', genres: ['RPG', 'Sci-Fi'], tags: ['Космос', 'Исследование', 'Bethesda'], platforms: ['PC', 'Xbox Series X'], rating: 7.4, ratingCount: 156789, releaseDate: '6 сентября 2023', status: 'released', badges: ['new'] },
+  { id: 9, title: 'Valheim', year: 2021, developer: 'Iron Gate', cover: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=600&q=80', screenshots: ['https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?w=1200&q=80'], description: 'Выживание в мире скандинавской мифологии.', fullDescription: 'Исследуйте, стройте и сражайтесь в процедурно генерируемом мире.', genres: ['Выживание', 'Приключения'], tags: ['Кооп', 'Крафт', 'Выживание'], platforms: ['PC', 'Xbox'], rating: 8.9, ratingCount: 98765, releaseDate: '2 февраля 2021', status: 'released', badges: ['hit'] },
+  { id: 10, title: 'Prince of Persia: The Sands of Time Remake', year: 2026, developer: 'Ubisoft', cover: 'https://images.unsplash.com/photo-1534423861386-85a16f5d13fd?w=600&q=80', screenshots: ['https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?w=1200&q=80'], description: 'Ремейк классической игры.', fullDescription: 'Принц Персии возвращается с обновлённой графикой.', genres: ['Экшен', 'Приключения'], tags: ['Паркур', 'Платформер', 'Ремейк'], platforms: ['PC', 'PS5', 'Xbox Series X'], rating: 0, ratingCount: 0, releaseDate: '2026 (ожидается)', status: 'upcoming', badges: ['soon'] }
+];
+
+const GENRES = [
+  { id: 'action', name: 'Экшен', icon: 'fa-gun', description: 'Динамичные игры с боями и сражениями', color: 'from-red-600 to-orange-600' },
+  { id: 'rpg', name: 'RPG', icon: 'fa-dragon', description: 'Ролевые игры с прокачкой персонажа', color: 'from-purple-600 to-pink-600' },
+  { id: 'adventure', name: 'Приключения', icon: 'fa-compass', description: 'Исследование миров и решение головоломок', color: 'from-emerald-600 to-teal-600' },
+  { id: 'shooter', name: 'Шутер', icon: 'fa-crosshairs', description: 'Стрелялки от первого и третьего лица', color: 'from-blue-600 to-cyan-600' },
+  { id: 'strategy', name: 'Стратегия', icon: 'fa-chess', description: 'Тактические и стратегические игры', color: 'from-amber-600 to-yellow-600' },
+  { id: 'puzzle', name: 'Головоломка', icon: 'fa-puzzle-piece', description: 'Логические игры и головоломки', color: 'from-pink-600 to-rose-600' },
+  { id: 'racing', name: 'Гонки', icon: 'fa-car', description: 'Гоночные симуляторы и аркады', color: 'from-orange-600 to-red-600' },
+  { id: 'sport', name: 'Спорт', icon: 'fa-futbol', description: 'Спортивные симуляторы', color: 'from-green-600 to-emerald-600' }
+];
+
+const PLATFORMS = [
+  { id: 'pc', name: 'PC', icon: 'fa-desktop', description: 'Игры для персональных компьютеров', color: 'from-blue-600 to-indigo-600' },
+  { id: 'ps5', name: 'PlayStation 5', icon: 'fa-playstation', description: 'Эксклюзивы и мультиплатформенные игры для PS5', color: 'from-indigo-600 to-purple-600' },
+  { id: 'xbox', name: 'Xbox Series X/S', icon: 'fa-xbox', description: 'Игры для консолей Xbox', color: 'from-green-600 to-emerald-600' },
+  { id: 'switch', name: 'Nintendo Switch', icon: 'fa-gamepad', description: 'Портативные и домашние игры', color: 'from-red-600 to-pink-600' },
+  { id: 'mobile', name: 'Mobile', icon: 'fa-mobile-screen', description: 'Игры для iOS и Android', color: 'from-purple-600 to-violet-600' }
+];
+
+const REVIEWS = {
+  1: [
+    { id: 1, user: 'NightCityRunner', avatar: 'Н', score: 9, title: 'После патчей — шедевр', body: 'Прошёл всю игру на ультрах после обновления 2.0. Сюжет, атмосфера, музыка — всё на высшем уровне.', tags: ['ЭТО ПОТРЯСЛО МЕНЯ', 'САУНДТРЕК НА ПОВТОРЕ'], rating: 'exceptional', pros: 'Сюжет, графика, музыка', cons: 'ИИ всё ещё хромает', likes: 234, dislikes: 12, date: '15.03.2024', helpful: true }
+  ],
+  2: [
+    { id: 2, user: 'SoulsBorne', avatar: 'С', score: 10, title: 'Миядзаки снова гений', body: 'Elden Ring — это эволюция формулы Dark Souls. Открытый мир не портит опыт, а дополняет его.', tags: ['НЕ МОГУ ПЕРЕСТАТЬ ИГРАТЬ', 'ПРОВЕРЕННЫЙ ВРЕМЕНЕМ'], rating: 'exceptional', pros: 'Дизайн мира, боссы, свобода', cons: 'Оптимизация на PC', likes: 892, dislikes: 34, date: '28.02.2022', helpful: true }
+  ]
+};
+
+// ============ СОСТОЯНИЕ ============
+let state = {
+  currentUser: null,
+  currentView: 'home',
+  currentGame: null,
+  searchQuery: '',
+  filters: { genre: null, platform: null, year: null, minRating: 0 },
+  sortBy: 'rating',
+  userLists: { want: [], playing: [], completed: [], dropped: [] },
+  userRatings: {},
+  userReviews: [],
+  authMode: 'login'
+};
+
+// ============ АВТОРИЗАЦИЯ ============
+function showAuthModal() {
+  document.getElementById('auth-modal').classList.remove('hidden-view');
+}
+
+function closeAuthModal() {
+  document.getElementById('auth-modal').classList.add('hidden-view');
+}
+
+function showRegisterModal() {
+  document.getElementById('register-modal').classList.remove('hidden-view');
+}
+
+function closeRegisterModal() {
+  document.getElementById('register-modal').classList.add('hidden-view');
+}
+
+function toggleAuthMode() {
+  closeAuthModal();
+  closeRegisterModal();
+  setTimeout(() => {
+    if (state.authMode === 'login') {
+      showRegisterModal();
+    } else {
+      showAuthModal();
+    }
+  }, 200);
+}
+
+function login() {
+  const email = document.getElementById('auth-email').value;
+  const password = document.getElementById('auth-password').value;
+  
+  if (email && password) {
+    // Имитация входа
+    state.currentUser = {
+      id: Date.now(),
+      username: email.split('@')[0],
+      email: email,
+      avatar: email[0].toUpperCase(),
+      joinDate: new Date().toLocaleDateString('ru-RU')
+    };
+    
+    // Сохраняем в localStorage
+    localStorage.setItem('gamevault_user', JSON.stringify(state.currentUser));
+    
+    updateAuthUI();
+    closeAuthModal();
+    alert('Добро пожаловать, ' + state.currentUser.username + '!');
+  } else {
+    alert('Пожалуйста, заполните все поля');
+  }
+}
+
+function register() {
+  const username = document.getElementById('reg-username').value;
+  const email = document.getElementById('reg-email').value;
+  const password = document.getElementById('reg-password').value;
+  
+  if (username && email && password) {
+    // Имитация регистрации
+    state.currentUser = {
+      id: Date.now(),
+      username: username,
+      email: email,
+      avatar: username[0].toUpperCase(),
+      joinDate: new Date().toLocaleDateString('ru-RU')
+    };
+    
+    localStorage.setItem('gamevault_user', JSON.stringify(state.currentUser));
+    
+    updateAuthUI();
+    closeRegisterModal();
+    alert('Регистрация успешна! Добро пожаловать, ' + username + '!');
+  } else {
+    alert('Пожалуйста, заполните все поля');
+  }
+}
+
+function logout() {
+  state.currentUser = null;
+  localStorage.removeItem('gamevault_user');
+  updateAuthUI();
+  showView('home');
+}
+
+function updateAuthUI() {
+  const authButtons = document.getElementById('auth-buttons');
+  
+  if (state.currentUser) {
+    authButtons.innerHTML = `
+      <div class="flex items-center gap-3">
+        <button onclick="showView('profile')" class="flex items-center gap-3 bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 rounded-full pl-1 pr-4 py-1 transition group">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-bold text-xs ring-2 ring-zinc-900">
+            ${state.currentUser.avatar}
+          </div>
+          <div class="hidden sm:flex flex-col items-start leading-tight">
+            <span class="text-sm font-semibold text-zinc-200 group-hover:text-white">${state.currentUser.username}</span>
+            <span class="text-[10px] text-zinc-500 font-medium">Игрок</span>
+          </div>
+          <i class="fa-solid fa-chevron-down text-[10px] text-zinc-600 group-hover:text-zinc-400 transition"></i>
+        </button>
+        <button onclick="logout()" class="text-zinc-500 hover:text-red-400 transition" title="Выйти">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    `;
+  } else {
+    authButtons.innerHTML = `
+      <button onclick="showAuthModal()" class="bg-violet-600 hover:bg-violet-500 text-white font-semibold py-2 px-4 rounded-lg transition flex items-center gap-2">
+        <i class="fa-solid fa-user"></i> Войти
+      </button>
+    `;
+  }
+}
+
+// Проверка сохранённого пользователя при загрузке
+window.addEventListener('load', () => {
+  const savedUser = localStorage.getItem('gamevault_user');
+  if (savedUser) {
+    state.currentUser = JSON.parse(savedUser);
+    updateAuthUI();
+  }
+});
+
+// ============ ОТЗЫВЫ ============
+let currentReviewGame = null;
+let selectedReviewRating = null;
+let selectedReviewTags = [];
+
+function openReviewModal(gameId) {
+  if (!state.currentUser) {
+    alert('Пожалуйста, войдите в аккаунт, чтобы оставить отзыв');
+    showAuthModal();
+    return;
+  }
+  
+  currentReviewGame = GAMES.find(g => g.id === gameId);
+  if (!currentReviewGame) return;
+  
+  document.getElementById('review-game-title').textContent = currentReviewGame.title;
+  document.getElementById('review-text').value = '';
+  selectedReviewRating = null;
+  selectedReviewTags = [];
+  
+  // Сброс кнопок рейтинга
+  document.querySelectorAll('.review-rating-btn').forEach(btn => {
+    btn.classList.remove('bg-violet-600', 'border-violet-500');
+    btn.classList.add('border-zinc-700');
+  });
+  
+  // Сброс тегов
+  document.querySelectorAll('.review-tag').forEach(tag => {
+    tag.classList.remove('selected', 'bg-violet-600', 'border-violet-500');
+    tag.classList.add('bg-zinc-800', 'border-zinc-700');
+  });
+  
+  document.getElementById('review-modal').classList.remove('hidden-view');
+}
+
+function closeReviewModal() {
+  document.getElementById('review-modal').classList.add('hidden-view');
+}
+
+function selectReviewRating(rating) {
+  selectedReviewRating = rating;
+  
+  document.querySelectorAll('.review-rating-btn').forEach(btn => {
+    btn.classList.remove('bg-violet-600', 'border-violet-500');
+    btn.classList.add('border-zinc-700');
+  });
+  
+  event.currentTarget.classList.remove('border-zinc-700');
+  event.currentTarget.classList.add('bg-violet-600', 'border-violet-500');
+}
+
+function toggleReviewTag(element) {
+  const tagText = element.textContent.replace(/[«»]/g, '');
+  
+  if (element.classList.contains('selected')) {
+    element.classList.remove('selected', 'bg-violet-600', 'border-violet-500');
+    element.classList.add('bg-zinc-800', 'border-zinc-700');
+    selectedReviewTags = selectedReviewTags.filter(t => t !== tagText);
+  } else {
+    element.classList.remove('bg-zinc-800', 'border-zinc-700');
+    element.classList.add('selected', 'bg-violet-600', 'border-violet-500');
+    selectedReviewTags.push(tagText);
+  }
+}
+
+function submitReview() {
+  if (!currentReviewGame || !state.currentUser) return;
+  
+  const text = document.getElementById('review-text').value;
+  
+  if (!selectedReviewRating) {
+    alert('Пожалуйста, выберите оценку');
+    return;
+  }
+  
+  if (!text.trim() && selectedReviewTags.length === 0) {
+    alert('Пожалуйста, напишите отзыв или выберите теги');
+    return;
+  }
+  
+  const review = {
+    id: Date.now(),
+    user: state.currentUser.username,
+    avatar: state.currentUser.avatar,
+    score: Math.floor(Math.random() * 3) + 8, // Случайная оценка 8-10 для демо
+    title: text.split('.')[0] || 'Отличный отзыв',
+    body: text || 'Игра понравилась!',
+    tags: selectedReviewTags,
+    rating: selectedReviewRating,
+    pros: 'Отличный геймплей',
+    cons: 'Не обнаружено',
+    likes: 0,
+    dislikes: 0,
+    date: new Date().toLocaleDateString('ru-RU'),
+    helpful: false
+  };
+  
+  if (!REVIEWS[currentReviewGame.id]) {
+    REVIEWS[currentReviewGame.id] = [];
+  }
+  
+  REVIEWS[currentReviewGame.id].unshift(review);
+  state.userReviews.push(review);
+  
+  closeReviewModal();
+  alert('Отзыв успешно опубликован!');
+  
+  // Обновляем страницу игры если мы на ней
+  if (state.currentView === 'game' && state.currentGame && state.currentGame.id === currentReviewGame.id) {
+    renderGamePage(document.getElementById('main-content'));
+  }
+}
+
+// ============ РОУТИНГ ============
+function showView(view, params = {}) {
+  state.currentView = view;
+  if (params.gameId) state.currentGame = GAMES.find(g => g.id === params.gameId);
+  if (params.genre) state.filters.genre = params.genre;
+  if (params.platform) state.filters.platform = params.platform;
+  
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  const activeLink = document.querySelector(`.nav-link[data-view="${view}"]`);
+  if (activeLink) activeLink.classList.add('active');
+
+  const main = document.getElementById('main-content');
+  main.innerHTML = '';
+  main.className = 'animate-fade';
+
+  switch(view) {
+    case 'home': renderHome(main); break;
+    case 'catalog': renderCatalog(main); break;
+    case 'game': renderGamePage(main); break;
+    case 'genres': renderGenres(main); break;
+    case 'platforms': renderPlatforms(main); break;
+    case 'tops': renderTops(main); break;
+    case 'releases': renderReleases(main); break;
+    case 'profile': renderProfile(main); break;
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============ РЕНДЕРИНГ ============
+function renderHome(container) {
+  const featured = GAMES[2];
+  const popular = [...GAMES].filter(g => g.status === 'released').sort((a, b) => b.rating - a.rating).slice(0, 6);
+  const upcoming = GAMES.filter(g => g.status === 'upcoming');
+
+  container.innerHTML = `
+    <section class="relative h-[500px] md:h-[600px] overflow-hidden">
+      <div class="absolute inset-0" style="background: url('${featured.screenshots[0]}') center/cover;"></div>
+      <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent"></div>
+      <div class="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/40 to-transparent"></div>
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-end pb-16 md:pb-24">
+        <div class="max-w-2xl animate-fade">
+          <div class="flex gap-2 mb-4">
+            ${featured.badges.map(b => `<span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${b === 'hit' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">${b === 'hit' ? '🔥 ХИТ' : '✨ ИГРА ГОДА'}</span>`).join('')}
+          </div>
+          <h1 class="font-display font-black text-4xl md:text-6xl mb-4 leading-tight text-white">${featured.title}</h1>
+          <div class="flex items-center gap-4 mb-6 text-sm text-zinc-300">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-star text-amber-400"></i> <b class="text-white text-lg">${featured.rating}</b></span>
+            <span class="w-1 h-1 rounded-full bg-zinc-600"></span>
+            <span>${featured.year}</span>
+            <span class="w-1 h-1 rounded-full bg-zinc-600"></span>
+            <span>${featured.genres[0]}</span>
+          </div>
+          <p class="text-zinc-300 text-lg mb-8 leading-relaxed max-w-xl">${featured.description}</p>
+          <div class="flex gap-3">
+            <button class="bg-violet-600 hover:bg-violet-500 text-white font-semibold py-3 px-6 rounded-xl transition shadow-lg shadow-violet-600/20 flex items-center gap-2" onclick="showView('game', {gameId: ${featured.id}})">
+              <i class="fa-solid fa-circle-info"></i> Подробнее
+            </button>
+            <button class="bg-zinc-800/80 hover:bg-zinc-700 text-white font-semibold py-3 px-6 rounded-xl transition border border-zinc-700 flex items-center gap-2" onclick="toggleList(${featured.id}, 'want')">
+              <i class="fa-regular fa-bookmark"></i> В списки
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div class="flex items-center justify-between mb-8">
+        <h2 class="font-display font-bold text-2xl md:text-3xl text-white">🔥 Популярное сейчас</h2>
+        <button class="text-violet-400 hover:text-violet-300 text-sm font-semibold flex items-center gap-1 transition" onclick="showView('tops')">Все топы <i class="fa-solid fa-arrow-right"></i></button>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        ${popular.map(g => gameCard(g)).join('')}
+      </div>
+    </section>
+
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-zinc-800/50">
+      <div class="flex items-center justify-between mb-8">
+        <h2 class="font-display font-bold text-2xl md:text-3xl text-white">🚀 Скоро выйдут</h2>
+        <button class="text-violet-400 hover:text-violet-300 text-sm font-semibold flex items-center gap-1 transition" onclick="showView('releases')">Календарь <i class="fa-solid fa-arrow-right"></i></button>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        ${upcoming.map(g => upcomingCard(g)).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function renderGenres(container) {
+  container.innerHTML = `
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <h1 class="font-display font-bold text-3xl md:text-4xl text-white mb-2">Жанры игр</h1>
+      <p class="text-zinc-500 mb-8">Выберите жанр, чтобы увидеть все игры</p>
+      
+      <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        ${GENRES.map(genre => `
+          <div onclick="showView('catalog', {genre: '${genre.id}'})" class="glass-panel rounded-2xl p-6 cursor-pointer hover:border-violet-500/50 transition group">
+            <div class="w-14 h-14 rounded-xl bg-gradient-to-br ${genre.color} flex items-center justify-center mb-4 group-hover:scale-110 transition">
+              <i class="fa-solid ${genre.icon} text-2xl text-white"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">${genre.name}</h3>
+            <p class="text-zinc-400 text-sm mb-4">${genre.description}</p>
+            <div class="flex items-center gap-2 text-violet-400 text-sm font-semibold">
+              <span>Смотреть игры</span>
+              <i class="fa-solid fa-arrow-right"></i>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function renderPlatforms(container) {
+  container.innerHTML = `
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <h1 class="font-display font-bold text-3xl md:text-4xl text-white mb-2">Платформы</h1>
+      <p class="text-zinc-500 mb-8">Выберите платформу для просмотра игр</p>
+      
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        ${PLATFORMS.map(platform => `
+          <div onclick="showView('catalog', {platform: '${platform.id}'})" class="glass-panel rounded-2xl p-6 cursor-pointer hover:border-violet-500/50 transition group">
+            <div class="w-14 h-14 rounded-xl bg-gradient-to-br ${platform.color} flex items-center justify-center mb-4 group-hover:scale-110 transition">
+              <i class="fa-brands ${platform.icon} text-2xl text-white"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">${platform.name}</h3>
+            <p class="text-zinc-400 text-sm mb-4">${platform.description}</p>
+            <div class="flex items-center gap-2 text-violet-400 text-sm font-semibold">
+              <span>Смотреть игры</span>
+              <i class="fa-solid fa-arrow-right"></i>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function gameCard(game) {
+  const badge = game.badges[0];
+  const badgeClass = badge === 'hit' ? 'bg-amber-500/90 text-black' : badge === 'new' ? 'bg-emerald-500/90 text-black' : badge === 'classic' ? 'bg-violet-500/90 text-white' : 'bg-blue-500/90 text-white';
+  const badgeText = badge === 'hit' ? 'ХИТ' : badge === 'new' ? 'НОВИНКА' : badge === 'classic' ? 'КЛАССИКА' : 'СКОРО';
+
+  return `
+    <div class="game-card group" onclick="showView('game', {gameId: ${game.id}})">
+      <div class="cover" style="background-image: url('${game.cover}')"></div>
+      <div class="overlay"></div>
+      ${badge ? `<span class="absolute top-3 left-3 ${badgeClass} text-[10px] font-black px-2 py-1 rounded-md shadow-lg z-10 tracking-wide">${badgeText}</span>` : ''}
+      ${game.rating > 0 ? `
+        <div class="absolute top-3 right-3 rating-badge px-2 py-1 rounded-lg flex items-center gap-1.5 z-10">
+          <i class="fa-solid fa-star text-emerald-400 text-[10px]"></i>
+          <span class="text-emerald-400 font-bold text-sm">${game.rating}</span>
+        </div>
+      ` : ''}
+      <div class="absolute bottom-0 left-0 right-0 p-4 z-10">
+        <div class="font-bold text-white text-sm md:text-base mb-1 line-clamp-1 group-hover:text-violet-400 transition-colors">${game.title}</div>
+        <div class="flex items-center justify-between text-xs text-zinc-400">
+          <span>${game.year}</span>
+          <span class="flex items-center gap-1"><i class="fa-regular fa-star text-zinc-600"></i> ${game.rating > 0 ? game.rating : 'Скоро'}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function upcomingCard(game) {
+  return `
+    <div class="game-card group" onclick="showView('game', {gameId: ${game.id}})">
+      <div class="cover" style="background-image: url('${game.cover}'); filter: grayscale(0.4) brightness(0.8);"></div>
+      <div class="overlay"></div>
+      <span class="absolute top-3 left-3 bg-blue-500/90 text-white text-[10px] font-black px-2 py-1 rounded-md shadow-lg z-10 tracking-wide">СКОРО</span>
+      <div class="absolute bottom-0 left-0 right-0 p-4 z-10">
+        <div class="font-bold text-white text-sm md:text-base mb-1 line-clamp-1">${game.title}</div>
+        <div class="text-xs text-zinc-400 mb-3">${game.releaseDate}</div>
+        <button class="w-full bg-zinc-800/80 hover:bg-violet-600 hover:text-white text-zinc-300 text-xs font-semibold py-2 rounded-lg transition border border-zinc-700 hover:border-violet-500" onclick="event.stopPropagation(); toggleList(${game.id}, 'want')">
+          <i class="fa-regular fa-bell mr-1"></i> Ожидать
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderGamePage(container) {
+  const game = state.currentGame;
+  if (!game) return;
+  const reviews = REVIEWS[game.id] || [];
+  const userRating = state.userRatings[game.id] || 0;
+
+  container.innerHTML = `
+    <section class="relative h-[400px] md:h-[500px] overflow-hidden">
+      <div class="absolute inset-0" style="background: url('${game.screenshots[0]}') center/cover;"></div>
+      <div class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-zinc-950/30"></div>
+      <div class="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/60 to-transparent"></div>
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-end pb-12">
+        <div class="grid md:grid-cols-[280px_1fr] gap-8 w-full items-end">
+          <div class="hidden md:block rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-white/10 aspect-[3/4] bg-cover bg-center" style="background-image: url('${game.cover}')"></div>
+          <div class="mb-4">
+            <div class="flex gap-2 mb-4 flex-wrap">
+              ${game.badges.map(b => `<span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${b === 'hit' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">${b === 'hit' ? ' ХИТ' : '✨ НОВИНКА'}</span>`).join('')}
+            </div>
+            <h1 class="font-display font-black text-4xl md:text-5xl mb-4 text-white leading-tight">${game.title}</h1>
+            <div class="flex flex-wrap items-center gap-4 text-sm mb-6 text-zinc-300">
+              <span>${game.year}</span>
+              <span class="w-1 h-1 rounded-full bg-zinc-600"></span>
+              <span>${game.developer}</span>
+              <span class="w-1 h-1 rounded-full bg-zinc-600"></span>
+              <span>${game.genres.join(', ')}</span>
+            </div>
+            
+            <div class="flex items-center gap-6 mb-8">
+              ${game.rating > 0 ? `
+                <div class="text-center px-4 py-2 bg-zinc-900/50 rounded-xl border border-zinc-800">
+                  <div class="font-display font-black text-4xl text-amber-400">${game.rating}</div>
+                  <div class="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mt-1">Рейтинг</div>
+                </div>
+              ` : ''}
+              <div>
+                <div class="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-1">Дата выхода</div>
+                <div class="text-white font-medium">${game.releaseDate}</div>
+              </div>
+              <div>
+                <div class="text-xs text-zinc-500 uppercase tracking-wider font-semibold mb-1">Статус</div>
+                <div class="text-white font-medium flex items-center gap-2">${game.status === 'released' ? '<i class="fa-solid fa-check-circle text-emerald-500"></i> Вышла' : '<i class="fa-regular fa-clock text-blue-500"></i> Ожидается'}</div>
+              </div>
+            </div>
+
+            <div class="flex gap-3 flex-wrap">
+              <button class="bg-violet-600 hover:bg-violet-500 text-white font-semibold py-2.5 px-5 rounded-xl transition shadow-lg shadow-violet-600/20 flex items-center gap-2" onclick="openReviewModal(${game.id})">
+                <i class="fa-regular fa-pen-to-square"></i> Написать отзыв
+              </button>
+              <button class="bg-zinc-800/80 hover:bg-zinc-700 text-white font-semibold py-2.5 px-5 rounded-xl transition border border-zinc-700 flex items-center gap-2" onclick="toggleList(${game.id}, 'want')">
+                <i class="fa-regular fa-bookmark"></i> Хочу
+              </button>
+              <button class="bg-zinc-800/80 hover:bg-zinc-700 text-white font-semibold py-2.5 px-5 rounded-xl transition border border-zinc-700 flex items-center gap-2" onclick="toggleList(${game.id}, 'playing')">
+                <i class="fa-solid fa-gamepad"></i> Играю
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="grid lg:grid-cols-[1fr_320px] gap-10">
+        <div>
+          <div class="flex gap-6 border-b border-zinc-800 mb-8 overflow-x-auto no-scrollbar">
+            ${['about', 'media', 'reviews'].map(tab => `
+              <button class="tab-btn pb-3 text-sm font-semibold uppercase tracking-wider transition-colors border-b-2 border-transparent ${tab === 'about' ? 'text-white border-violet-500' : 'text-zinc-500 hover:text-zinc-300'}" data-tab="${tab}" onclick="switchTab('${tab}')">
+                ${tab === 'about' ? 'Об игре' : tab === 'media' ? 'Медиа' : `Отзывы (${reviews.length})`}
+              </button>
+            `).join('')}
+          </div>
+
+          <div id="tab-about" class="tab-content">
+            <h2 class="text-xl font-bold text-white mb-4">Об игре</h2>
+            <p class="text-zinc-400 leading-relaxed mb-8 text-base">${game.fullDescription}</p>
+            
+            <h3 class="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-3">Теги</h3>
+            <div class="flex flex-wrap gap-2 mb-8">
+              ${game.tags.map(t => `<span class="px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-zinc-300 hover:border-zinc-600 transition cursor-default">${t}</span>`).join('')}
+            </div>
+
+            ${game.rating > 0 ? `
+              <h3 class="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-3">Распределение оценок</h3>
+              <div class="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 mb-8">
+                ${[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(score => {
+                  const pct = game.distribution ? (game.distribution[score] || 0) : 0;
+                  const color = score >= 8 ? 'bg-emerald-500' : score >= 6 ? 'bg-amber-500' : 'bg-red-500';
+                  return `
+                    <div class="flex items-center gap-4 mb-2.5 last:mb-0">
+                      <div class="w-6 text-sm font-bold text-zinc-400 text-right">${score}</div>
+                      <div class="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                        <div class="h-full ${color} rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                      </div>
+                      <div class="w-10 text-right text-xs text-zinc-500 font-medium">${pct}%</div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            ` : ''}
+          </div>
+
+          <div id="tab-media" class="tab-content hidden-view">
+            <h2 class="text-xl font-bold text-white mb-6">Скриншоты</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ${game.screenshots.map(s => `
+                <div class="aspect-video rounded-xl overflow-hidden border border-zinc-800 cursor-pointer hover:border-violet-500/50 transition group" onclick="openLightbox('${s}')">
+                  <img src="${s}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <div id="tab-reviews" class="tab-content hidden-view">
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="text-xl font-bold text-white">Отзывы пользователей</h2>
+              <button class="bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold py-2 px-4 rounded-lg transition flex items-center gap-2" onclick="openReviewModal(${game.id})">
+                <i class="fa-solid fa-pen"></i> Написать
+              </button>
+            </div>
+            <div class="space-y-4">
+              ${reviews.length > 0 ? reviews.map(r => reviewCard(r)).join('') : '<div class="text-center py-12 text-zinc-500">Пока нет отзывов. Будьте первым!</div>'}
+            </div>
+          </div>
+        </div>
+
+        <aside class="space-y-6">
+          <div class="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6">
+            <h3 class="font-bold text-white mb-4 flex items-center gap-2"><i class="fa-regular fa-star text-amber-400"></i> Ваша оценка</h3>
+            <div class="flex gap-1 mb-4" id="user-stars">
+              ${[1,2,3,4,5,6,7,8,9,10].map(i => `
+                <button class="text-xl transition hover:scale-110 ${i <= userRating ? 'text-amber-400' : 'text-zinc-700 hover:text-amber-400/50'}" onclick="rateGame(${game.id}, ${i})">
+                  <i class="fa-solid fa-star"></i>
+                </button>
+              `).join('')}
+            </div>
+            ${userRating > 0 ? `<div class="text-sm text-zinc-400">Вы поставили: <b class="text-amber-400">${userRating}/10</b></div>` : '<div class="text-sm text-zinc-600">Нажмите на звезду, чтобы оценить</div>'}
+          </div>
+
+          <div class="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6">
+            <h3 class="font-bold text-white mb-4">Информация</h3>
+            <div class="space-y-4 text-sm">
+              <div><span class="text-zinc-500 block mb-1">Разработчик</span><span class="text-zinc-200 font-medium">${game.developer}</span></div>
+              <div><span class="text-zinc-500 block mb-1">Платформы</span>
+                <div class="flex gap-2 mt-1">
+                  ${game.platforms.map(p => `<span class="px-2 py-1 bg-zinc-800 rounded text-zinc-300 text-xs">${p}</span>`).join('')}
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  `;
+}
+
+function reviewCard(r) {
+  const ratingLabels = {
+    'exceptional': { text: 'Исключительно', color: 'text-violet-400', icon: 'fa-bullseye' },
+    'recommended': { text: 'Рекомендуем', color: 'text-emerald-400', icon: 'fa-thumbs-up' },
+    'meh': { text: 'Да так', color: 'text-amber-400', icon: 'fa-meh' },
+    'skip': { text: 'Пропустить', color: 'text-red-400', icon: 'fa-ban' }
+  };
+  
+  const rating = ratingLabels[r.rating] || ratingLabels['recommended'];
+  
+  return `
+    <div class="bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-5 hover:border-zinc-700 transition">
+      <div class="flex items-start gap-4 mb-4">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center font-bold text-sm flex-shrink-0 text-white">${r.avatar}</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-3 flex-wrap mb-2">
+            <span class="font-bold text-white text-sm">${r.user}</span>
+            <span class="px-3 py-1 rounded-full bg-zinc-800 border border-zinc-700 text-xs ${rating.color}">
+              <i class="fa-solid ${rating.icon} mr-1"></i>${rating.text}
+            </span>
+            <span class="text-xs text-zinc-600">${r.date}</span>
+          </div>
+          
+          ${r.tags && r.tags.length > 0 ? `
+            <div class="flex flex-wrap gap-2 mb-3">
+              ${r.tags.map(tag => `<span class="px-3 py-1 rounded-full bg-violet-600/20 border border-violet-500/30 text-violet-300 text-xs">«${tag}»</span>`).join('')}
+            </div>
+          ` : ''}
+          
+          <h4 class="font-bold text-white mb-2">${r.title}</h4>
+          <p class="text-zinc-400 text-sm leading-relaxed mb-4">${r.body}</p>
+          
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3">
+              <div class="text-[10px] font-bold text-emerald-500 uppercase tracking-wider mb-1">Плюсы</div>
+              <div class="text-sm text-zinc-300">${r.pros}</div>
+            </div>
+            <div class="bg-red-500/5 border border-red-500/10 rounded-lg p-3">
+              <div class="text-[10px] font-bold text-red-500 uppercase tracking-wider mb-1">Минусы</div>
+              <div class="text-sm text-zinc-300">${r.cons}</div>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-4 pt-3 border-t border-zinc-800/50">
+            <button class="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-emerald-400 transition" onclick="likeReview(${r.id})">
+              <i class="fa-regular fa-thumbs-up"></i> <span>${r.likes}</span>
+            </button>
+            <button class="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-red-400 transition">
+              <i class="fa-regular fa-thumbs-down"></i> <span>${r.dislikes}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCatalog(container) {
+  let filtered = GAMES.filter(g => {
+    if (state.searchQuery && !g.title.toLowerCase().includes(state.searchQuery.toLowerCase())) return false;
+    if (state.filters.genre) {
+      const genreMap = { 'action': 'Экшен', 'rpg': 'RPG', 'adventure': 'Приключения', 'shooter': 'Шутер', 'strategy': 'Стратегия', 'puzzle': 'Головоломка', 'racing': 'Гонки', 'sport': 'Спорт' };
+      if (!g.genres.includes(genreMap[state.filters.genre])) return false;
+    }
+    if (state.filters.platform) {
+      const platformMap = { 'pc': 'PC', 'ps5': 'PS5', 'xbox': 'Xbox', 'switch': 'Switch', 'mobile': 'Mobile' };
+      if (!g.platforms.includes(platformMap[state.filters.platform])) return false;
+    }
+    if (state.filters.minRating && g.rating < state.filters.minRating) return false;
+    return true;
+  });
+  
+  if (state.sortBy === 'rating') filtered.sort((a, b) => b.rating - a.rating);
+  else if (state.sortBy === 'year') filtered.sort((a, b) => b.year - a.year);
+
+  container.innerHTML = `
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="mb-8">
+        <h1 class="font-display font-bold text-3xl md:text-4xl text-white mb-2">Каталог игр</h1>
+        <p class="text-zinc-500">Найдено: <b class="text-zinc-300">${filtered.length}</b> игр</p>
+      </div>
+
+      <div class="glass-panel rounded-2xl p-6 mb-8">
+        <div class="mb-6">
+          <div class="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Фильтры</div>
+          <div class="flex flex-wrap gap-2 mb-4">
+            <button class="chip ${!state.filters.genre ? 'bg-violet-600 text-white border-violet-600' : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-600'} px-4 py-2 rounded-full text-sm font-medium transition border" onclick="setFilter('genre', null)">Все жанры</button>
+            ${GENRES.map(g => `<button class="chip ${state.filters.genre === g.id ? 'bg-violet-600 text-white border-violet-600' : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-600'} px-4 py-2 rounded-full text-sm font-medium transition border" onclick="setFilter('genre', '${g.id}')">${g.name}</button>`).join('')}
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button class="chip ${!state.filters.platform ? 'bg-violet-600 text-white border-violet-600' : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-600'} px-4 py-2 rounded-full text-sm font-medium transition border" onclick="setFilter('platform', null)">Все платформы</button>
+            ${PLATFORMS.map(p => `<button class="chip ${state.filters.platform === p.id ? 'bg-violet-600 text-white border-violet-600' : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-600'} px-4 py-2 rounded-full text-sm font-medium transition border" onclick="setFilter('platform', '${p.id}')">${p.name}</button>`).join('')}
+          </div>
+        </div>
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-bold text-zinc-500 uppercase tracking-wider">Сортировка:</span>
+            ${[['rating', 'По рейтингу'], ['year', 'По году']].map(([k, v]) => 
+              `<button class="${state.sortBy === k ? 'text-violet-400 font-semibold' : 'text-zinc-400 hover:text-zinc-200'} text-sm transition" onclick="setSort('${k}')">${v}</button>`
+            ).join('')}
+          </div>
+          <button class="text-zinc-500 hover:text-white text-sm flex items-center gap-2 transition" onclick="clearFilters()"><i class="fa-solid fa-rotate-right"></i> Сбросить</button>
+        </div>
+      </div>
+
+      ${filtered.length > 0 ? `
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          ${filtered.map(g => gameCard(g)).join('')}
+        </div>
+      ` : '<div class="text-center py-20 text-zinc-600"><i class="fa-solid fa-magnifying-glass text-4xl mb-4"></i><p>Ничего не найдено</p></div>'}
+    </section>
+  `;
+}
+
+function renderTops(container) {
+  const byRating = [...GAMES].filter(g => g.rating > 0).sort((a, b) => b.rating - a.rating).slice(0, 10);
+  container.innerHTML = `
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <h1 class="font-display font-bold text-3xl md:text-4xl text-white mb-2">🏆 Топы и рейтинги</h1>
+      <p class="text-zinc-500 mb-8">Лучшие игры по мнению нашего сообщества</p>
+      <div class="grid lg:grid-cols-2 gap-6">
+        <div class="glass-panel rounded-2xl p-6">
+          <h3 class="font-bold text-lg mb-6 flex items-center gap-2 text-white"><i class="fa-solid fa-trophy text-amber-400"></i> Лучшие всех времён</h3>
+          <div class="space-y-2">
+            ${byRating.map((g, i) => `
+              <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-zinc-800/50 transition cursor-pointer group" onclick="showView('game', {gameId: ${g.id}})">
+                <div class="font-display font-black text-xl w-8 text-center ${i === 0 ? 'text-amber-400' : i === 1 ? 'text-zinc-300' : i === 2 ? 'text-orange-400' : 'text-zinc-600'}">${i + 1}</div>
+                <img src="${g.cover}" class="w-12 h-16 rounded-lg object-cover border border-zinc-800 group-hover:border-zinc-600 transition">
+                <div class="flex-1 min-w-0">
+                  <div class="font-bold text-sm text-white truncate group-hover:text-violet-400 transition">${g.title}</div>
+                  <div class="text-xs text-zinc-500">${g.year} · ${g.genres[0]}</div>
+                </div>
+                <div class="flex items-center gap-1.5 bg-zinc-900 px-2.5 py-1.5 rounded-lg border border-zinc-800">
+                  <i class="fa-solid fa-star text-amber-400 text-xs"></i><b class="text-sm text-white">${g.rating}</b>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        <div class="glass-panel rounded-2xl p-6">
+          <h3 class="font-bold text-lg mb-6 flex items-center gap-2 text-white"><i class="fa-solid fa-fire text-orange-400"></i> Популярные жанры</h3>
+          <div class="space-y-3">
+            ${GENRES.slice(0, 5).map((genre, i) => `
+              <div onclick="showView('catalog', {genre: '${genre.id}'})" class="flex items-center justify-between p-3 rounded-xl bg-zinc-800/30 hover:bg-zinc-800/50 transition cursor-pointer group">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-gradient-to-br ${genre.color} flex items-center justify-center">
+                    <i class="fa-solid ${genre.icon} text-white"></i>
+                  </div>
+                  <div>
+                    <div class="font-semibold text-white group-hover:text-violet-400 transition">${genre.name}</div>
+                    <div class="text-xs text-zinc-500">${Math.floor(Math.random() * 500 + 100)} игр</div>
+                  </div>
+                </div>
+                <i class="fa-solid fa-arrow-right text-zinc-600 group-hover:text-violet-400 transition"></i>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderReleases(container) {
+  const upcoming = GAMES.filter(g => g.status === 'upcoming');
+  const recent = [...GAMES].filter(g => g.status === 'released').sort((a, b) => b.year - a.year).slice(0, 8);
+
+  container.innerHTML = `
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <h1 class="font-display font-bold text-3xl md:text-4xl text-white mb-2">📅 Календарь релизов</h1>
+      <p class="text-zinc-500 mb-8">Следите за выходами новых игр</p>
+
+      <h2 class="font-display font-bold text-2xl mb-6">🚀 Ожидаемые релизы</h2>
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+        ${upcoming.map(g => upcomingCard(g)).join('')}
+      </div>
+
+      <h2 class="font-display font-bold text-2xl mb-6">✨ Недавние релизы</h2>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        ${recent.map(g => gameCard(g)).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function renderProfile(container) {
+  if (!state.currentUser) {
+    container.innerHTML = `
+      <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="glass-panel rounded-3xl p-12 text-center">
+          <div class="w-24 h-24 rounded-full bg-zinc-800 flex items-center justify-center mx-auto mb-6">
+            <i class="fa-solid fa-user text-4xl text-zinc-600"></i>
+          </div>
+          <h2 class="text-2xl font-bold text-white mb-4">Войдите в аккаунт</h2>
+          <p class="text-zinc-400 mb-8">Чтобы видеть свой профиль и оставлять отзывы, пожалуйста, авторизуйтесь</p>
+          <button onclick="showAuthModal()" class="bg-violet-600 hover:bg-violet-500 text-white font-semibold py-3 px-8 rounded-xl transition">
+            Войти
+          </button>
+        </div>
+      </section>
+    `;
+    return;
+  }
+
+  const want = GAMES.filter(g => state.userLists.want.includes(g.id));
+  const playing = GAMES.filter(g => state.userLists.playing.includes(g.id));
+  const completed = GAMES.filter(g => state.userLists.completed.includes(g.id));
+  const rated = Object.keys(state.userRatings).length;
+  const avgRating = rated > 0 ? (Object.values(state.userRatings).reduce((a, b) => a + b, 0) / rated).toFixed(1) : 0;
+
+  container.innerHTML = `
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="glass-panel rounded-3xl p-8 mb-8 relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+        <div class="relative flex flex-col md:flex-row items-center gap-6">
+          <div class="w-24 h-24 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center font-bold text-3xl flex-shrink-0 ring-4 ring-zinc-900">
+            ${state.currentUser.avatar}
+          </div>
+          <div class="text-center md:text-left flex-1">
+            <h1 class="font-display font-bold text-3xl text-white mb-1">${state.currentUser.username}</h1>
+            <p class="text-zinc-400 mb-4">На GameVault с ${state.currentUser.joinDate} · Игрок</p>
+            <div class="flex gap-2 justify-center md:justify-start flex-wrap">
+              <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30"><i class="fa-solid fa-fire mr-1"></i> Активный</span>
+              <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-violet-500/20 text-violet-400 border border-violet-500/30"><i class="fa-solid fa-gamepad mr-1"></i> Геймер</span>
+            </div>
+          </div>
+          <button onclick="editProfile()" class="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-2.5 px-5 rounded-xl transition border border-zinc-700 flex items-center gap-2">
+            <i class="fa-solid fa-pen"></i> Редактировать
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+        <div class="glass-panel rounded-2xl p-5 text-center">
+          <div class="text-zinc-500 text-xs uppercase tracking-wider font-bold mb-2">Всего игр</div>
+          <div class="font-display font-black text-3xl text-white">${want.length + playing.length + completed.length}</div>
+        </div>
+        <div class="glass-panel rounded-2xl p-5 text-center">
+          <div class="text-zinc-500 text-xs uppercase tracking-wider font-bold mb-2">Оценок</div>
+          <div class="font-display font-black text-3xl text-amber-400">${rated}</div>
+        </div>
+        <div class="glass-panel rounded-2xl p-5 text-center">
+          <div class="text-zinc-500 text-xs uppercase tracking-wider font-bold mb-2">Средний балл</div>
+          <div class="font-display font-black text-3xl text-violet-400">${avgRating}</div>
+        </div>
+        <div class="glass-panel rounded-2xl p-5 text-center">
+          <div class="text-zinc-500 text-xs uppercase tracking-wider font-bold mb-2">Отзывов</div>
+          <div class="font-display font-black text-3xl text-emerald-400">${state.userReviews.length}</div>
+        </div>
+      </div>
+
+      <div class="space-y-10">
+        ${renderList('🎯 Хочу пройти', want)}
+        ${renderList('🎮 Сейчас играю', playing)}
+        ${renderList('✅ Прошёл', completed)}
+      </div>
+    </section>
+  `;
+}
+
+function editProfile() {
+  if (!state.currentUser) return;
+  
+  const newName = prompt('Введите новое имя пользователя:', state.currentUser.username);
+  if (newName && newName.trim()) {
+    state.currentUser.username = newName.trim();
+    state.currentUser.avatar = newName[0].toUpperCase();
+    localStorage.setItem('gamevault_user', JSON.stringify(state.currentUser));
+    updateAuthUI();
+    renderProfile(document.getElementById('main-content'));
+    alert('Профиль успешно обновлён!');
+  }
+}
+
+function renderList(title, games) {
+  if (games.length === 0) return `
+    <div>
+      <h2 class="font-display font-bold text-xl text-white mb-4">${title} <span class="text-zinc-600 text-base font-normal">(${games.length})</span></h2>
+      <div class="glass-panel rounded-2xl p-12 text-center text-zinc-600 border-dashed border-2">
+        <i class="fa-regular fa-folder-open text-3xl mb-3"></i>
+        <p>Список пуст</p>
+      </div>
+    </div>
+  `;
+  return `
+    <div>
+      <h2 class="font-display font-bold text-xl text-white mb-4">${title} <span class="text-zinc-600 text-base font-normal">(${games.length})</span></h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        ${games.map(g => gameCard(g)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// ============ ФУНКЦИИ ============
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(t => {
+    t.classList.remove('text-white', 'border-violet-500');
+    t.classList.add('text-zinc-500', 'border-transparent');
+  });
+  const activeBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  activeBtn.classList.remove('text-zinc-500', 'border-transparent');
+  activeBtn.classList.add('text-white', 'border-violet-500');
+  
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden-view'));
+  document.getElementById(`tab-${tab}`).classList.remove('hidden-view');
+}
+
+function setFilter(key, value) {
+  state.filters[key] = value;
+  showView('catalog');
+}
+
+function setSort(value) {
+  state.sortBy = value;
+  showView('catalog');
+}
+
+function clearFilters() {
+  state.filters = { genre: null, platform: null, year: null, minRating: 0 };
+  showView('catalog');
+}
+
+function handleSearch(value) {
+  state.searchQuery = value;
+  if (value.length > 0 && state.currentView !== 'catalog') {
+    showView('catalog');
+  } else if (state.currentView === 'catalog') {
+    showView('catalog');
+  }
+}
+
+function toggleList(gameId, list) {
+  if (!state.currentUser) {
+    alert('Пожалуйста, войдите в аккаунт, чтобы добавлять игры в списки');
+    showAuthModal();
+    return;
+  }
+  
+  const lists = ['want', 'playing', 'completed', 'dropped'];
+  lists.forEach(l => { state.userLists[l] = state.userLists[l].filter(id => id !== gameId); });
+  if (!state.userLists[list].includes(gameId)) state.userLists[list].push(gameId);
+  
+  const btn = event.currentTarget;
+  const originalHTML = btn.innerHTML;
+  btn.innerHTML = '<i class="fa-solid fa-check"></i> Добавлено';
+  btn.classList.add('bg-emerald-600', 'border-emerald-600', 'text-white');
+  setTimeout(() => {
+    btn.innerHTML = originalHTML;
+    btn.classList.remove('bg-emerald-600', 'border-emerald-600', 'text-white');
+  }, 1500);
+  
+  if (state.currentView === 'profile') showView('profile');
+}
+
+function rateGame(gameId, score) {
+  if (!state.currentUser) {
+    alert('Пожалуйста, войдите в аккаунт, чтобы оценить игру');
+    showAuthModal();
+    return;
+  }
+  
+  state.userRatings[gameId] = score;
+  showView('game', { gameId });
+}
+
+function likeReview(reviewId) {
+  Object.values(REVIEWS).forEach(reviews => {
+    const r = reviews.find(x => x.id === reviewId);
+    if (r) { 
+      r.likes++; 
+      if (state.currentView === 'game') {
+        renderGamePage(document.getElementById('main-content'));
+      }
+    }
+  });
+}
+
+function openLightbox(src) {
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade cursor-zoom-out';
+  overlay.onclick = () => overlay.remove();
+  overlay.innerHTML = `<img src="${src}" class="max-w-full max-h-[90vh] rounded-xl shadow-2xl border border-zinc-800">`;
+  document.body.appendChild(overlay);
+}
+
+// ============ ИНИЦИАЛИЗАЦИЯ ============
+showView('home');
+</script>
+</body>
+</html>
