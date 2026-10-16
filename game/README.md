@@ -32,19 +32,7 @@ gamevault/
 
 Порядок `<script>` в `index.html` важен: файлы делят глобальные функции и `state`.
 
-## Запуск
 
-Нужен любой статический сервер (Google-вход не работает с `file://`):
-
-```
-cd gamevault
-python3 -m http.server 8000      # затем http://localhost:8000
-```
-
-## Настройка
-
-1. `js/config.js` → `RAWG_KEY` (rawg.io/apidocs), при желании `GAMES_COUNT`.
-2. `js/config.js` → `FIREBASE_CONFIG` (инструкция внутри файла). В консоли Firebase включите Email/Password и Google и добавьте домен в Authorized domains.
 
 ## Вход по ссылке из письма (passwordless)
 
