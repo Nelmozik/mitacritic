@@ -1,0 +1,110 @@
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: #09090b;
+    color: #f4f4f5;
+    overflow-x: hidden;
+  }
+  .font-display { font-family: 'Orbitron', sans-serif; }
+  
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #09090b; }
+  ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .animate-fade { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+  .game-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    background: #18181b;
+    border: 1px solid #27272a;
+  }
+  .game-card:hover {
+    transform: translateY(-4px);
+    border-color: #52525b;
+    box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5), 0 0 20px rgba(139, 92, 246, 0.1);
+  }
+  .game-card .cover {
+    aspect-ratio: 3/4;
+    background-size: cover;
+    background-position: center;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .game-card:hover .cover { transform: scale(1.05); }
+  .game-card .overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 30%, rgba(9,9,11,0.95) 100%);
+  }
+
+  .nav-link {
+    position: relative;
+    padding: 8px 16px;
+    color: #a1a1aa;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+    cursor: pointer;
+  }
+  .nav-link:hover, .nav-link.active { color: #fff; }
+  .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 2px;
+    background: #8b5cf6;
+    border-radius: 2px;
+  }
+
+  .glass-panel {
+    background: rgba(24, 24, 27, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .rating-badge {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    backdrop-filter: blur(4px);
+  }
+
+  .hidden-view { display: none !important; }
+
+  @media (max-width: 768px) {
+    .nav-desktop { display: none !important; }
+    .nav-link.active::after { display: none; }
+    .nav-link.active { color: #8b5cf6; }
+  }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .review-tag {
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .review-tag:hover {
+    transform: translateY(-2px);
+  }
+  .review-tag.selected {
+    background: #8b5cf6;
+    border-color: #8b5cf6;
+  }
