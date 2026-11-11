@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Публичные данные игроков: читать могут вошедшие, запись только владельцем с валидацией
+    match /users/{uid} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'nameLower', 'photo', 'updatedAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 32
+        && request.resource.data.nameLower is string
+        && request.resource.data.nameLower == request.resource.data.name.lower()
+        && (request.resource.data.photo == null || (request.resource.data.photo is string && request.resource.data.photo.size() <= 500 && request.resource.data.photo.matches('^https://.*')))
+        && (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt is timestamp);
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Приватные данные игрока (email, списки, личные настройки): только сам владелец
+    match /private/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Подписки: id записи = мойUid_чужойUid
+    match /follows/{id} {
+      allow read: if request.auth != null;
+      // создать подписку можно только от своего имени и нельзя подписаться на самого себя
+      allow create: if request.auth != null
+        && request.resource.data.follower == request.auth.uid
+        && request.resource.data.follower != request.resource.data.followed
+        && id == request.auth.uid + '_' + request.resource.data.followed
+        && request.resource.data.keys().hasOnly(['follower', 'followed', 'followerName', 'followerPhoto', 'followedName', 'followedPhoto', 'createdAt'])
+        && request.resource.data.follower is string
+        && request.resource.data.followed is string;
+      // удалить — только свою подписку
+      allow delete: if request.auth != null && resource.data.follower == request.auth.uid;
+      allow update: if false;
+    }
+
+    // Рецензии к играм: чтение открыто всем, публикация/редактирование только автором
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasOnly(['id', 'userId', 'userName', 'gameId', 'rating', 'badge', 'title', 'body', 'pros', 'cons', 'tags', 'date', 'likes', 'createdAt', 'updatedAt'])
+        && request.resource.data.gameId is int
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1 && request.resource.data.rating <= 10
+        && request.resource.data.body is string && request.resource.data.body.size() >= 10 && request.resource.data.body.size() <= 5000;
+      allow update: if request.auth != null
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // Оценки игр: чтение вошедшим, запись только автором
+    match /ratings/{ratingId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1 && request.resource.data.rating <= 10;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // Пользовательские списки: чтение вошедшим, запись только автором
+    match /lists/{listId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // Явный запрет на всё остальное
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
